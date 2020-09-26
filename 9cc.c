@@ -35,6 +35,23 @@ void error(char *fmt, ...) {
    exit(1);
 }
 
+//Input program
+char *user_input;
+
+//print error position
+void error_at(char *loc, char *fmt, ...) {
+   va_list ap;
+   va_start(ap, fmt);
+
+   int pos = loc - user_input;
+   fprintf(stderr, "%s\n", user_input);
+   fprintf(stderr, "%*s", pos, ""); //print pos count space
+   fprintf(stderr, "^ ");
+   vfprintf(stderr, fmt, ap);
+   fprintf(stderr, "\n");
+   exit(1);
+}
+
 //consume next token
 bool consume(char op) {
    if (token->kind != TK_RESERVED || token->str[0] != op) {
@@ -46,8 +63,9 @@ bool consume(char op) {
 
 //fetch next token
 void expect(char op) {
-   if (token->kind != TK_RESERVED ||token ->str[0] != op) {
-      error("'%c' not expected", op);
+   if (token->kind != TK_RESERVED || token->str[0] != op) {
+      //error("'%c' expected", op);
+      error_at(token->str, "'%c' expected", op);
    }
    token = token->next;
 }
@@ -55,7 +73,8 @@ void expect(char op) {
 //read integer
 int expect_number() {
    if (token->kind != TK_NUM) {
-      error(" Not a number");
+      error_at(token->str, " Not a number");
+      //error("Not a number");
    }
    int val = token->val;
    token = token->next;
@@ -99,12 +118,14 @@ Token *tokenize(char *p) {
          continue;
       }
 
-      error("impossible tokenize");
+      error_at(p, "impossible tokenize");
+      //error("impossible tokenize");
    }
 
    new_token(TK_EOF, cur, p);
    return head.next;
 }
+
 
 
 
@@ -114,7 +135,9 @@ int main(int argc, char **argv) {
       return 1;
    }
 
-   token = tokenize(argv[1]);
+   user_input = argv[1];
+   
+   token = tokenize(user_input);
 
    //print head of assenbler
    printf(".intel_syntax noprefix\n");
