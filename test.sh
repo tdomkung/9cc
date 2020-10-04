@@ -26,4 +26,9 @@ assert 4 '(3+5)/2'
 assert 5  '-5+10'
 assert 9  '-5+ +10- -4'
 #assert 100  '--100'  # TODO: tokenize で失敗
+assert  1  '5<4+7'
+assert  0  '5-4<=-4'
+assert  1  '6>=11-5'
+assert  1  '5+5*3==20'
+assert  1  '5/5!=2'
 echo OK

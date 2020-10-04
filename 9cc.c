@@ -5,7 +5,18 @@
 #include <stdlib.h>
 #include <string.h>
 
-//token kind
+
+// expr      = equality
+// equality  = relational ("==" relatioonal | "!=" relational)*
+// relational   = add ("<" add | "<=" add | ">" add | ">=" add)*
+// add  = mul ("+" mul | "-" mul)*
+// mul    = unary ("*" unuary | "/" unary)*
+// unary  = ("+" | "-")? primary       ;temporary
+// primary  = num | "(" expr ")"
+
+//Input program
+char *user_input;
+
 typedef enum {
    TK_RESERVED,
    TK_NUM,
@@ -13,7 +24,6 @@ typedef enum {
 } TokenKind;
 
 typedef struct Token Token;
-//Token type
 struct Token {
    TokenKind kind;
    Token *next;
@@ -27,15 +37,21 @@ Token *token;
 
 // Node kind for Abstract Grammer Tree 抽象構文木
 typedef enum {
-   ND_ADD, // +
-   ND_SUB, // -
+   ND_NUM, // Integer
    ND_MUL, // *
    ND_DIV, // /
-   ND_NUM, // Integer
+   ND_ADD, // +
+   ND_SUB, // -
+   ND_LTH, // <
+   ND_LEQ, // <=
+   ND_GTH, // >
+   ND_GEQ, // >=
+   ND_EQU, // ==
+   ND_NEQ, // !=
 } NodeKind;
 
-typedef struct Node Node;
 // Node type for Abstract Grammer Tree
+typedef struct Node Node;
 struct Node {
    NodeKind kind;
    Node *lhs;
@@ -70,8 +86,7 @@ bool consume(char *op) {
    return true;
 }
 
-//Error printing
-//sam args of printf
+//Error printing same args of printf
 void error(char *fmt, ...) {
    va_list ap;
    va_start(ap, fmt);
@@ -79,9 +94,6 @@ void error(char *fmt, ...) {
    fprintf(stderr, "\n");
    exit(1);
 }
-
-//Input program
-char *user_input;
 
 //print error position
 void error_at(char *loc, char *fmt, ...) {
@@ -118,13 +130,6 @@ int expect_number() {
    return val;
 }
 
-// expr      = equality
-// equality  = relational ("==" relatioonal | "!=" relational)*
-// relational   = add ("<" add | "<=" add | ">" add | ">=" add)*
-// add  = add ("+" mul | "-" mul)*
-// mul    = unary ("*" unuary | "/" unary)*
-// unary  = ("+" | "-")? primary       ;temporary
-// primary  = num | "(" expr ")"
 
 
 
@@ -139,7 +144,7 @@ Node *primary() {
    return new_node_num(expect_number());
 }
 
-Node *unary() {
+Node *unary() {          //temporary
    if (consume("+")) {
       return primary();
    }
@@ -151,7 +156,6 @@ Node *unary() {
 
 Node *mul() {
    Node *node = unary();
-
    for(;;) {
       if (consume("*")) {
          node = new_node(ND_MUL, node, unary());
@@ -163,7 +167,7 @@ Node *mul() {
    }
 }
 
-Node *expr() {
+Node *add() {
    Node *node = mul();
 
    for (;;) {
@@ -177,6 +181,44 @@ Node *expr() {
    }
 }
 
+Node *relational() {
+   Node *node = add();
+
+   for (;;) {
+      if (consume("<")) {
+         node = new_node(ND_LTH, node, add());
+      } else if (consume("<=")) {
+         node = new_node(ND_LEQ, node, add());
+      } else if (consume(">")) {
+         return new_node(ND_LTH, add(), node);
+         //node = new_node(ND_GTH, node, add());
+      } else if (consume(">=")) {
+         return new_node(ND_LEQ, add(), node);
+         //node = new_node(ND_GEQ, node, add());
+      } else {
+         return node;
+      }
+   }
+}
+
+Node *equality() {
+   Node *node = relational();
+
+   for (;;) {
+      if (consume("==")) {
+         node = new_node(ND_EQU, node, relational());
+      } else if (consume("!=")) {
+         node = new_node(ND_NEQ, node, relational());
+      } else {
+         return node;
+      }
+   }
+}
+
+Node *expr() {
+   Node *node = equality();
+   return node;
+}
 
 void gen(Node *node) {
    if (node->kind == ND_NUM) {
@@ -191,6 +233,26 @@ void gen(Node *node) {
    printf("   pop rax\n");
 
    switch (node->kind) {
+   case ND_EQU:
+      printf("   cmp rax, rdi\n");
+      printf("   sete al\n");
+      printf("   movzb rax, al\n");
+      break;
+   case ND_NEQ:
+      printf("   cmp rax, rdi\n");
+      printf("   setne al\n");
+      printf("   movzb rax, al\n");
+      break;
+   case ND_LTH:
+      printf("   cmp rax, rdi\n");
+      printf("   setl al\n");
+      printf("   movzb rax, al\n");
+      break;
+   case ND_LEQ:
+      printf("   cmp rax, rdi\n");
+      printf("   setle al\n");
+      printf("   movzb rax, al\n");
+      break;
    case ND_ADD:
       printf("   add rax, rdi\n");
       break;
@@ -236,11 +298,20 @@ Token *tokenize(char *p) {
          p++;
          continue;
       }
-      if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')') {
-         cur = new_token(TK_RESERVED, cur, p++, 1);
+      if ((*p == '<' && *(p+1) == '=') || (*p == '>' && *(p+1) == '=')
+       || (*p == '=' && *(p+1) == '=') || (*p == '!' && *(p+1) == '=')) {
+         cur = new_token(TK_RESERVED, cur, p, 2);
+         p=p+2;
          continue;
       }
 
+
+      if (*p == '+' || *p == '-' || *p == '*' || *p == '/'
+       || *p == '<' || *p == '>'
+       || *p == '(' || *p == ')') {
+         cur = new_token(TK_RESERVED, cur, p++, 1);
+         continue;
+      }
       if (isdigit(*p)) {
          cur = new_token(TK_NUM, cur, p, 0);
          //char *t = p;
