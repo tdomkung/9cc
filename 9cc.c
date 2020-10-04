@@ -7,9 +7,9 @@
 
 //token kind
 typedef enum {
-   TK_RESERVED, //symbol
-   TK_NUM,      //Integer
-   TK_EOF,      //End of Input
+   TK_RESERVED,
+   TK_NUM,
+   TK_EOF,
 } TokenKind;
 
 typedef struct Token Token;
@@ -19,6 +19,7 @@ struct Token {
    Token *next;
    int val;
    char *str;
+   int len;
 };
 
 // Current token
@@ -58,10 +59,11 @@ Node *new_node_num(int val) {
 }
 
 
-
 //consume next token
-bool consume(char op) {
-   if (token->kind != TK_RESERVED || token->str[0] != op) {
+bool consume(char *op) {
+   if (token->kind != TK_RESERVED || 
+      strlen(op) != token->len ||
+      memcmp(token->str, op, token->len)) {
       return false;
    }
    token = token->next;
@@ -97,10 +99,10 @@ void error_at(char *loc, char *fmt, ...) {
 
 
 //fetch next token
-void expect(char op) {
-   if (token->kind != TK_RESERVED || token->str[0] != op) {
+void expect(char *op) {
+   if (token->kind != TK_RESERVED || strlen(op) != token->len || memcmp(token->str, op, token->len)) {
       //error("'%c' expected", op);
-      error_at(token->str, "'%c' expected", op);
+      error_at(token->str, "'%s' expected", op);
    }
    token = token->next;
 }
@@ -116,22 +118,32 @@ int expect_number() {
    return val;
 }
 
+// expr      = equality
+// equality  = relational ("==" relatioonal | "!=" relational)*
+// relational   = add ("<" add | "<=" add | ">" add | ">=" add)*
+// add  = add ("+" mul | "-" mul)*
+// mul    = unary ("*" unuary | "/" unary)*
+// unary  = ("+" | "-")? primary       ;temporary
+// primary  = num | "(" expr ")"
+
+
+
 Node *expr();
 
 Node *primary() {
-   if (consume('(')) {
+   if (consume("(")) {
       Node *node = expr();
-      expect(')');
+      expect(")");
       return node;
    }
    return new_node_num(expect_number());
 }
 
 Node *unary() {
-   if (consume('+')) {
+   if (consume("+")) {
       return primary();
    }
-   if (consume('-')) {
+   if (consume("-")) {
       return new_node(ND_SUB, new_node_num(0), primary());
    }
    return primary();
@@ -141,9 +153,9 @@ Node *mul() {
    Node *node = unary();
 
    for(;;) {
-      if (consume('*')) {
+      if (consume("*")) {
          node = new_node(ND_MUL, node, unary());
-      } else if (consume('/')) {
+      } else if (consume("/")) {
          node = new_node(ND_DIV, node, unary()); 
       } else {
          return node;
@@ -155,9 +167,9 @@ Node *expr() {
    Node *node = mul();
 
    for (;;) {
-      if (consume('+')) {
+      if (consume("+")) {
          node = new_node(ND_ADD, node, mul());
-      } else if (consume('-')) {
+      } else if (consume("-")) {
          node = new_node(ND_SUB, node, mul());
       } else {
          return node;
@@ -202,15 +214,17 @@ bool at_eof() {
 }
 
 // create new_token
-Token *new_token(TokenKind kind, Token *cur, char *str) {
+Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
    Token *tok = calloc(1, sizeof(Token));
    tok->kind = kind;
    tok->str = str;
+   tok->len = len;
    cur->next = tok;
    return tok;
 }
 
-// read next token
+//+ - * / ( )
+//== != < <= > >=
 Token *tokenize(char *p) {
    Token head;
    head.next = NULL;
@@ -222,15 +236,16 @@ Token *tokenize(char *p) {
          p++;
          continue;
       }
-
       if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')') {
-         cur = new_token(TK_RESERVED, cur, p++);
+         cur = new_token(TK_RESERVED, cur, p++, 1);
          continue;
       }
 
       if (isdigit(*p)) {
-         cur = new_token(TK_NUM, cur, p);
+         cur = new_token(TK_NUM, cur, p, 0);
+         //char *t = p;
          cur->val = strtol(p, &p, 10);
+         //cur->len = p-t;
          continue;
       }
 
@@ -238,9 +253,10 @@ Token *tokenize(char *p) {
       //error("impossible tokenize");
    }
 
-   new_token(TK_EOF, cur, p);
+   new_token(TK_EOF, cur, p, 0);
    return head.next;
 }
+
 
 
 int main(int argc, char **argv) {
@@ -264,20 +280,4 @@ int main(int argc, char **argv) {
    printf("   ret\n");
    return 0;
 
-   //// print first 'mov' instruction
-   //printf("   mov rax, %d\n", expect_number());
-
-   //// consume '+ number' or '- number'
-   //while (!at_eof()) {
-   //   if (consume('+')) {
-   //      printf("   add rax, %d\n", expect_number());
-   //      continue;
-   //   }
-
-   //   expect('-');
-   //   printf("   sub rax, %d\n", expect_number());
-   //}
-
-   //printf("   ret\n");
-   //return 0;
 }
