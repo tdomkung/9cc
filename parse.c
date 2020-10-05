@@ -15,50 +15,6 @@
 // unary  = ("+" | "-")? primary       ;temporary
 // primary  = num | "(" expr ")"
 
-//Input program
-//char *user_input;
-
-// typedef enum {
-//    TK_RESERVED,
-//    TK_NUM,
-//    TK_EOF,
-// } TokenKind;
-// 
-// typedef struct Token Token;
-// struct Token {
-//    TokenKind kind;
-//    Token *next;
-//    int val;
-//    char *str;
-//    int len;
-// };
-
-// // Current token
-// Token *token;
-// 
-// // Node kind for Abstract Grammer Tree 抽象構文木
-// typedef enum {
-//    ND_NUM, // Integer
-//    ND_MUL, // *
-//    ND_DIV, // /
-//    ND_ADD, // +
-//    ND_SUB, // -
-//    ND_LTH, // <
-//    ND_LEQ, // <=
-//    ND_GTH, // >
-//    ND_GEQ, // >=
-//    ND_EQU, // ==
-//    ND_NEQ, // !=
-// } NodeKind;
-// 
-// // Node type for Abstract Grammer Tree
-// typedef struct Node Node;
-// struct Node {
-//    NodeKind kind;
-//    Node *lhs;
-//    Node *rhs;
-//    int val;
-// };
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
    Node *node = calloc(1, sizeof(Node));
@@ -221,56 +177,6 @@ Node *expr() {
    return node;
 }
 
-void gen(Node *node) {
-   if (node->kind == ND_NUM) {
-      printf("   push %d\n", node->val);
-      return;
-   }
-
-   gen(node->lhs);
-   gen(node->rhs);
-
-   printf("   pop rdi\n");
-   printf("   pop rax\n");
-
-   switch (node->kind) {
-   case ND_EQU:
-      printf("   cmp rax, rdi\n");
-      printf("   sete al\n");
-      printf("   movzb rax, al\n");
-      break;
-   case ND_NEQ:
-      printf("   cmp rax, rdi\n");
-      printf("   setne al\n");
-      printf("   movzb rax, al\n");
-      break;
-   case ND_LTH:
-      printf("   cmp rax, rdi\n");
-      printf("   setl al\n");
-      printf("   movzb rax, al\n");
-      break;
-   case ND_LEQ:
-      printf("   cmp rax, rdi\n");
-      printf("   setle al\n");
-      printf("   movzb rax, al\n");
-      break;
-   case ND_ADD:
-      printf("   add rax, rdi\n");
-      break;
-   case ND_SUB:
-      printf("   sub rax, rdi\n");
-      break;
-   case ND_MUL:
-      printf("   imul rax, rdi\n");
-      break;
-   case ND_DIV:
-      printf("   cqo\n");
-      printf("   idiv rdi\n");
-      break;
-   }
-
-   printf(" push rax\n");
-}
 
 bool at_eof() {
    return token->kind == TK_EOF;
