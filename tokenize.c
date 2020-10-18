@@ -48,6 +48,18 @@ static Token *new_token(TokenKind kind, char *start, char *end) { //::: Create a
 static bool startswith(char *p, char *q) { //:::
    return strncmp(p, q, strlen(q)) == 0;
 } //;;;
+
+// Returns true if c is valid as the first character of an identifier.
+static bool is_ident1(char c) {
+   return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_';
+}
+
+// Returns true if c is valid as a non-first character of an identifier.
+static bool is_ident2(char c) {
+   return is_ident1(c) || ('0' <= c && c <= '9');
+}
+
+
 static int read_punct(char *p) { //::: Read a punctuator token from p and returns its length.
    if (startswith(p, "==") || startswith(p, "!=") ||
          startswith(p, "<=") || startswith(p, ">="))
@@ -78,11 +90,19 @@ Token *tokenize(char *p) { //::: Tokenize `current_input` and returns new tokens
     }
 
     // Identifier
-    if ('a' <= *p && *p <= 'z') {
-      cur = cur->next = new_token(TK_IDENT, p, p + 1);
-      p++;
+    if (is_ident1(*p)) {
+      char *start = p;
+      do {
+        p++;
+      } while (is_ident2(*p));
+      cur = cur->next = new_token(TK_IDENT, start, p);
       continue;
     }
+    //if ('a' <= *p && *p <= 'z') {
+    //  cur = cur->next = new_token(TK_IDENT, p, p + 1);
+    //  p++;
+    //  continue;
+    //}
 
     // Punctuators
     int punct_len = read_punct(p);
