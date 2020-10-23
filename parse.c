@@ -42,6 +42,7 @@ static Node *new_num   (int val) { //:::
    node->val = val;
    return node;
 } //;;;
+
 static Node *new_var_node(Obj *var) { //:::
    Node *node = new_node(ND_VAR);
    node->var = var;
@@ -56,8 +57,14 @@ static Obj *new_lvar(char *name) { //:::
   return var;
 } //;;;
 
-
-static Node *stmt      (Token **rest, Token *tok) {  //::: stmt = expr-stmt
+// stmt = "return" expr ";"
+//      | expr-stmt
+static Node *stmt      (Token **rest, Token *tok) {
+   if (equal(tok, "return")) {
+      Node *node = new_unary(ND_RETURN, expr(&tok, tok->next));
+      *rest = skip(tok, ";");
+      return node;
+   }
    return expr_stmt(rest, tok);
 } //;;;
 static Node *expr_stmt (Token **rest, Token *tok) {  //::: expr-stmt = expr ";"
@@ -65,9 +72,11 @@ static Node *expr_stmt (Token **rest, Token *tok) {  //::: expr-stmt = expr ";"
    *rest = skip(tok, ";");
    return node;
 } //;;;
+
 static Node *expr      (Token **rest, Token *tok) {  //::: expr = assign
    return assign(rest, tok);
 } //;;;
+
 static Node *assign    (Token **rest, Token *tok) {  //::: assign = equality ("=" assign)?
    Node *node = equality(&tok, tok);
    if (equal(tok, "="))
@@ -75,6 +84,7 @@ static Node *assign    (Token **rest, Token *tok) {  //::: assign = equality ("=
    *rest = tok;
    return node;
 } //;;;
+
 static Node *equality  (Token **rest, Token *tok) {  //::: equality = relational ("==" relational | "!=" relational)*
    Node *node = relational(&tok, tok);
 
@@ -93,6 +103,7 @@ static Node *equality  (Token **rest, Token *tok) {  //::: equality = relational
       return node;
    }
 } //;;;
+
 static Node *relational(Token **rest, Token *tok) {  //::: relational = add ("<" add | "<=" add | ">" add | ">=" add)*
    Node *node = add(&tok, tok);
 
@@ -139,6 +150,8 @@ static Node *add       (Token **rest, Token *tok) {  //::: add = mul ("+" mul | 
     return node;
   }
 } //;;;
+
+
 static Node *mul       (Token **rest, Token *tok) {  //::: mul = unary ("*" unary | "/" unary)*
    Node *node = unary(&tok, tok);
 
@@ -180,10 +193,6 @@ static Node *primary   (Token **rest, Token *tok) {  //::: primary = "(" expr ")
       }
       *rest = tok->next;
       return new_var_node(var);
-
-      //Node *node = new_var_node(*tok->loc);
-      //*rest = tok->next;
-      //return node;
    }
 
    if (tok->kind == TK_NUM) {
@@ -191,9 +200,9 @@ static Node *primary   (Token **rest, Token *tok) {  //::: primary = "(" expr ")
       *rest = tok->next;
       return node;
    }
-
    error_tok(tok, "expected an expression");
 } //;;;
+
 
 
 Function *parse(Token *tok) { //:::
@@ -208,14 +217,5 @@ Function *parse(Token *tok) { //:::
   prog->locals = locals;
   return prog;
 } //;;;
-
-//Node *parse            (Token *tok) {                //::: program = stmt*
-//   Node head = {};
-//   Node *cur = &head;
-//   while (tok->kind != TK_EOF) {
-//      cur = cur->next = stmt(&tok, tok);
-//   }
-//   return head.next;
-//} //;;;
 
 

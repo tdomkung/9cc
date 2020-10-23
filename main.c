@@ -7,10 +7,10 @@ int main(int argc, char **argv) {
 
    Token *tok = tokenize(argv[1]);
    Function *prog = parse(tok);
+   // Traverse the AST to emit assembly.
    codegen(prog);
 
-   //Node *node = parse(tok);
-   //codegen(node);
    return 0;
+
 }
 

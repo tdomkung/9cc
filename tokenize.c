@@ -58,8 +58,6 @@ static bool is_ident1(char c) {
 static bool is_ident2(char c) {
    return is_ident1(c) || ('0' <= c && c <= '9');
 }
-
-
 static int read_punct(char *p) { //::: Read a punctuator token from p and returns its length.
    if (startswith(p, "==") || startswith(p, "!=") ||
          startswith(p, "<=") || startswith(p, ">="))
@@ -67,6 +65,14 @@ static int read_punct(char *p) { //::: Read a punctuator token from p and return
 
    return ispunct(*p) ? 1 : 0;
 } //;;;
+
+static void convert_keywords(Token *tok) {
+   for (Token *t = tok; t->kind != TK_EOF; t = t->next) {
+      if (equal(t, "return")) {
+         t->kind = TK_KEYWORD;
+      }
+   }
+}
 
 Token *tokenize(char *p) { //::: Tokenize `current_input` and returns new tokens.
   current_input = p;
@@ -89,7 +95,7 @@ Token *tokenize(char *p) { //::: Tokenize `current_input` and returns new tokens
       continue;
     }
 
-    // Identifier
+    // Identifier or keyword
     if (is_ident1(*p)) {
       char *start = p;
       do {
@@ -98,11 +104,6 @@ Token *tokenize(char *p) { //::: Tokenize `current_input` and returns new tokens
       cur = cur->next = new_token(TK_IDENT, start, p);
       continue;
     }
-    //if ('a' <= *p && *p <= 'z') {
-    //  cur = cur->next = new_token(TK_IDENT, p, p + 1);
-    //  p++;
-    //  continue;
-    //}
 
     // Punctuators
     int punct_len = read_punct(p);
@@ -116,8 +117,6 @@ Token *tokenize(char *p) { //::: Tokenize `current_input` and returns new tokens
   }
 
   cur = cur->next = new_token(TK_EOF, p, p);
+  convert_keywords(head.next);
   return head.next;
 } //;;;
-
-
-
